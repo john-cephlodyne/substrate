@@ -241,6 +241,11 @@ fi
 if needs_update "Gcloud" "$GCLOUD_VERSION"; then
   fetch_and_verify "Google Cloud SDK" "$GCLOUD_URL" "$GCLOUD_FILE" "gcloud.tar.gz" "$GCLOUD_SHA"
   rm -rf "$GCLOUD_DIR" && tar -xzf "$CACHE_DIR/gcloud.tar.gz" -C "$LOCAL_DIR"
+
+  echo "📦 Bootstrapping gcloud (Fetching isolated Python 3.10+)..."
+  # Run installer headlessly to fetch Google's bundled Python without modifying user dotfiles
+  env CLOUDSDK_CORE_DISABLE_PROMPTS=1 "$GCLOUD_DIR/install.sh" --quiet --path-update=false --command-completion=false
+
   ln -sf "$GCLOUD_DIR/bin/gcloud" "$BIN_DIR/gcloud"
   xattr -r -d com.apple.quarantine "$GCLOUD_DIR" 2>/dev/null || true
 
