@@ -41,6 +41,15 @@ func main() {
 	showDesc := flag.Bool("desc", false, "Show detailed vulnerability descriptions")
 	flag.Parse()
 
+	fmt.Println("🔄 Fetching the latest vulnerability database and scanner (govulncheck@latest)...")
+	installCmd := exec.Command("go", "install", "golang.org/x/vuln/cmd/govulncheck@latest")
+	installCmd.Stdout = os.Stdout
+	installCmd.Stderr = os.Stderr
+	if err := installCmd.Run(); err != nil {
+		fmt.Printf("❌ Failed to update govulncheck: %v\n", err)
+		fmt.Println("⚠️  Proceeding with cached version (if available)...")
+	}
+
 	fmt.Println("🔍 Running govulncheck... (this may take a moment)")
 	cmd := exec.Command("govulncheck", "-json", "./...")
 	out, _ := cmd.Output()
@@ -81,7 +90,7 @@ func main() {
 	}
 
 	if len(modulesToFix) == 0 {
-		fmt.Println("✅ No third-party vulnerabilities found! Your fortress is secure.")
+		fmt.Println("✅ No third-party vulnerabilities found!")
 		return
 	}
 
