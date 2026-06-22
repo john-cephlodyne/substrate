@@ -145,14 +145,19 @@ func main() {
 	if input == "all" {
 		selectedMods = mods
 	} else {
-		parts := strings.Split(input, ",")
-		for _, p := range parts {
+		for p := range strings.SplitSeq(input, ",") {
 			var idx int
-			fmt.Sscanf(strings.TrimSpace(p), "%d", &idx)
-			if idx > 0 && idx <= len(mods) {
-				selectedMods = append(selectedMods, mods[idx-1])
+			if _, err := fmt.Sscanf(strings.TrimSpace(p), "%d", &idx); err == nil {
+				if idx > 0 && idx <= len(mods) {
+					selectedMods = append(selectedMods, mods[idx-1])
+				}
 			}
 		}
+	}
+
+	if len(selectedMods) == 0 {
+		fmt.Println("No valid selection made. Aborting.")
+		return
 	}
 
 	if len(selectedMods) == 0 {
