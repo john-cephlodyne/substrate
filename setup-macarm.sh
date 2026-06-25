@@ -548,7 +548,6 @@ require("lazy").setup({
   spec = {
     { "LazyVim/LazyVim", import = "lazyvim.plugins" },
     { import = "lazyvim.plugins.extras.lang.go" },
-    { import = "lazyvim.plugins.extras.lang.terraform" },
     { import = "lazyvim.plugins.extras.lang.markdown" },
     { import = "lazyvim.plugins.extras.lang.svelte" },
     { import = "plugins" },
@@ -579,6 +578,24 @@ return {
         "svelte"
       })
     end
+
+    -- FIX: Disable Tree-sitter highlighting for Terraform/HCL to prevent UI freezes
+    -- on complex Heredoc string interpolations. Falls back to standard regex highlighting.
+    opts.highlight = opts.highlight or {}
+    local prev_disable = opts.highlight.disable
+    opts.highlight.disable = function(lang, buf)
+      if lang == "terraform" or lang == "hcl" then
+        return true
+      end
+      if type(prev_disable) == "function" then
+        return prev_disable(lang, buf)
+      elseif type(prev_disable) == "table" then
+        for _, disabled_lang in ipairs(prev_disable) do
+          if lang == disabled_lang then return true end
+        end
+      end
+      return false
+    end
   end,
 }
 EOF
@@ -586,7 +603,24 @@ EOF
 cat <<'EOF' >~/.config/nvim/lua/plugins/lsp.lua
 return {
   "neovim/nvim-lspconfig",
-  opts = { servers = { biome = {}, gopls = {}, terraformls = {}, svelte = {} } }
+  opts = { 
+    servers = { 
+      biome = {}, 
+      gopls = {}, 
+      svelte = {},
+      terraformls = {
+        -- Force Neovim to use the tofu-ls binary symlinked in ~/.local/bin
+        cmd = { "terraform-ls", "serve" },
+        filetypes = { "terraform", "terraform-vars", "hcl" },
+      }
+    },
+    setup = {
+      terraformls = function()
+        -- Return true to completely bypass Mason for this LSP
+        return true
+      end,
+    }
+  }
 }
 EOF
 
@@ -634,10 +668,21 @@ return {
 EOF
 
 echo "⌨️  Injecting 'jk' escape shortcut into Neovim..."
-
 cat <<'EOF' >~/.config/nvim/lua/config/keymaps.lua
 -- Press jk fast to exit insert mode 
 vim.keymap.set("i", "jk", "<esc>", { desc = "Exit insert mode" })
+EOF
+
+echo "⚙️  Injecting safety overrides for Terraform files..."
+cat <<'EOF' >~/.config/nvim/lua/config/autocmds.lua
+-- Disable aggressive visual scanners for Terraform/HCL files to prevent lockups on complex Heredocs
+vim.api.nvim_create_autocmd("FileType", {
+  pattern = { "terraform", "terraform-vars", "hcl" },
+  callback = function()
+    vim.b.miniindentscope_disable = true
+    vim.cmd("NoMatchParen")
+  end,
+})
 EOF
 
 # ------------------------------------------------------------------------------
